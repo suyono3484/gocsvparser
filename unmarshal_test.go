@@ -17,6 +17,10 @@ type anon struct {
 	OutputY int64 `csv:"y"`
 }
 
+func TestParse(t *testing.T) {
+	newDefaultHandler().parseVal(&Coba{})
+}
+
 func TestRead(t *testing.T) {
 	var coba []Coba
 

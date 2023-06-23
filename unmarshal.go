@@ -4,8 +4,14 @@ import (
 	"encoding/csv"
 )
 
+type FieldsConfig struct {
+	Name string
+	Num  int
+}
+
 type FieldsHandlerByName interface {
-	FieldsName() string
+	FieldName() string
+	FieldByName(name, field string) error
 	FieldsHandler
 }
 
@@ -22,6 +28,9 @@ type FieldsHandler interface {
 
 type RecordHandler interface {
 	FieldsHandlers() []FieldsHandler
+	// SetFieldConfigs is only effective if a Map is passed to HandleRecord
+	SetFieldConfigs(configs []FieldsConfig)
+	HandleRecord(v interface{}, record []string) error
 }
 
 type Unmarshaler struct {

@@ -3,6 +3,14 @@ package gocsvparser
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
+	"fmt"
+	"io"
+	"reflect"
+)
+
+var (
+	HeaderRead = errors.New("column headers successfully read")
 )
 
 type FieldsConfig struct {
@@ -115,6 +123,13 @@ func (u *Unmarshaler) processOptions(options ...CsvOption) {
 }
 
 func (u *Unmarshaler) Unmarshal(data []byte, v any, options ...CsvOption) error {
+	var (
+		typ        reflect.Type
+		val, slice reflect.Value
+		record     []string
+		err        error
+	)
+
 	if len(options) > 0 {
 		u.options = append(u.options, options...)
 	}
@@ -124,9 +139,38 @@ func (u *Unmarshaler) Unmarshal(data []byte, v any, options ...CsvOption) error 
 
 	if u.handlerType == direct {
 		if u.recordHandler == nil {
-			//TODO: build default generator
+			u.recordHandler = newDefaultHandler()
 		}
 
+		slice, typ, err = u.detOutputType(v)
+		if err != nil {
+			return fmt.Errorf("error Unmarshal: detOutputType: %+v", err)
+		}
+
+		for {
+			record, err = u.csvReader.Read()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return fmt.Errorf("error Unmarshal: csv.Reader.Read: %+v", err)
+			}
+
+			val, err = u.newElem(typ)
+			if err != nil {
+				return fmt.Errorf("error Unmarshal: newElem: %+v", err)
+			}
+
+			err = u.recordHandler.HandleRecord(val.Interface(), record)
+			if err != nil {
+				if err == HeaderRead {
+					continue
+				}
+				return fmt.Errorf("error Unmarshal: RecordHandler.HandleRecord: %+v", err)
+			}
+
+			slice.Set(reflect.Append(slice, val.Elem()))
+		}
 	} else {
 
 	}
@@ -135,23 +179,41 @@ func (u *Unmarshaler) Unmarshal(data []byte, v any, options ...CsvOption) error 
 	return nil
 }
 
+func (u *Unmarshaler) detOutputType(v any) (reflect.Value, reflect.Type, error) {
+	var typ reflect.Type
+
+	if v == nil {
+		return reflect.Value{}, nil, errors.New("the output parameter is nil")
+	}
+
+	val := reflect.ValueOf(v)
+	if val.Kind() != reflect.Pointer {
+		return reflect.Value{}, nil, errors.New("invalid output parameter type")
+	}
+
+	val = val.Elem()
+	if val.Kind() != reflect.Slice {
+		return reflect.Value{}, nil, errors.New("invalid output parameter type")
+	}
+
+	typ = val.Type().Elem()
+
+	return val, typ, nil
+}
+
 func Unmarshal(data []byte, v any, options ...CsvOption) error {
 	return NewUnmarshaler().Unmarshal(data, v, options...)
 }
 
-// func Read(i interface{}) {
-// 	var val reflect.Value
+func (u *Unmarshaler) newElem(typ reflect.Type) (reflect.Value, error) {
+	switch typ.Kind() {
+	case reflect.Struct:
+		return reflect.New(typ), nil
+	case reflect.Map:
+		//TODO: implementation
+	case reflect.Slice:
+		//TODO: implementation
+	}
 
-// 	val = reflect.ValueOf(i)
-// 	if val.Kind() == reflect.Pointer {
-// 		val = val.Elem()
-
-// 		if val.Kind() == reflect.Slice {
-// 			val = val.Elem()
-
-// 			if val.Kind() == reflect.Struct {
-// 				fields := reflect.VisibleFields(val.Type())
-// 			}
-// 		}
-// 	}
-// }
+	return reflect.Zero(typ), errors.New("invalid impelementation") //TODO: placeholder; update me
+}

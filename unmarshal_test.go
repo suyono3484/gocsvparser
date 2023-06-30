@@ -18,7 +18,7 @@ type anon struct {
 }
 
 func TestParse(t *testing.T) {
-	newDefaultHandler().parseVal(&Coba{})
+	newDefaultHandler().detType(&Coba{})
 }
 
 func TestRead(t *testing.T) {

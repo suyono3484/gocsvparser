@@ -3,7 +3,7 @@ package example
 import (
 	"testing"
 
-	"github.com/budiuno/gocsvparser"
+	"github.com/suyono3484/gocsvparser"
 )
 
 type mtcarsFlat struct {

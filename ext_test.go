@@ -3,7 +3,7 @@ package gocsvparser_test
 import (
 	"testing"
 
-	"github.com/budiuno/gocsvparser"
+	"github.com/suyono3484/gocsvparser"
 )
 
 type testDirect struct {
